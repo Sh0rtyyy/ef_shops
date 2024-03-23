@@ -14,17 +14,17 @@ ui_page 'web/build/index.html'
 
 shared_scripts {
 	'@ox_lib/init.lua',
-	'@qbx_core/modules/lib.lua',
+	'@es_extended/imports.lua',
 	'shared/**/*.lua'
 }
 
 client_scripts {
-	'@qbx_core/modules/playerdata.lua',
+	'@es_extended/imports.lua',
 	'client/**/*.lua'
 }
 
 server_scripts {
-	'@qbx_core/modules/hooks.lua',
+	'@es_extended/imports.lua',
 	'@oxmysql/lib/MySQL.lua',
 	'server/**/*.lua'
 }
@@ -37,5 +37,4 @@ files {
 
 depedencies {
 	'ox_lib',
-	'qbx_core',
 }

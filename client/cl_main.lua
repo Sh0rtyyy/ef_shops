@@ -1,4 +1,3 @@
-if not lib.checkDependency('qbx_core', '1.6.0') then error() end
 if not lib.checkDependency('ox_lib', '3.0.0') then error() end
 if not lib.checkDependency('ox_inventory', '2.20.0') then error() end
 
@@ -31,11 +30,13 @@ end
 
 ---@param data { type: string, location: integer }
 local function openShop(data)
-	lib.print.debug("Opening shop: " .. data.type, "Location: " .. data.location)
+	--lib.print.debug("Opening shop: " .. data.type, "Location: " .. data.location)
 
 	setShopVisible(true)
 
 	local shopItems = lib.callback.await("EF-Shops:Server:OpenShop", false, data.type, data.location)
+	local bank, money = lib.callback.await('EF-Shops:Server:getmoney')
+	local licenses = lib.callback.await('EF-Shops:Server:getlicenses')
 
 	if not shopItems then
 		lib.print.error("Failed opening shop: " .. data.type)
@@ -58,10 +59,10 @@ local function openShop(data)
 		weight = exports.ox_inventory:GetPlayerWeight(),
 		maxWeight = exports.ox_inventory:GetPlayerMaxWeight(),
 		money = {
-			Cash = QBX.PlayerData.money.cash,
-			Bank = QBX.PlayerData.money.bank
+			Cash = money,
+			Bank = bank
 		},
-		licenses = QBX.PlayerData.metadata.licences
+		licenses = licenses
 	})
 	SendReactMessage("setCurrentShop", { id = data.type, location = data.location, label = config.locations[data.type].label })
 	SendReactMessage("setShopItems", shopItems)
@@ -78,10 +79,10 @@ RegisterNuiCallback("purchaseItems", function(data, cb)
 		weight = exports.ox_inventory:GetPlayerWeight(),
 		maxWeight = exports.ox_inventory:GetPlayerMaxWeight(),
 		money = {
-			Cash = QBX.PlayerData.money.cash,
-			Bank = QBX.PlayerData.money.bank
+			Cash = money,
+			Bank = bank
 		},
-		licenses = QBX.PlayerData.metadata.licences
+		licenses = licenses
 	})
 
 	cb(success)

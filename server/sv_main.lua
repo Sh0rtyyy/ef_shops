@@ -1,11 +1,9 @@
 lib.versionCheck('jellyton69/ef-shops')
-if not lib.checkDependency('qbx_core', '1.6.0') then error() end
-if not lib.checkDependency('ox_lib', '3.0.0') then error() end
-if not lib.checkDependency('ox_inventory', '2.20.0') then error() end
+if not lib.checkDependency('ox_lib', '3.0.0') then error() print("kokot1") end
+if not lib.checkDependency('ox_inventory', '2.20.0') then error() print("kokot2") end
 
 
 local config = require 'config'
-local TriggerEventHooks = require '@qbx_core.modules.hooks'
 
 local ox_inventory = exports.ox_inventory
 local ITEMS = ox_inventory:Items()
@@ -52,8 +50,32 @@ local mapBySubfield = function(tbl, subfield)
 	return mapped
 end
 
+lib.callback.register("EF-Shops:Server:getmoney", function()
+    local xPlayer = ESX.GetPlayerFromId(source)
+    local money = xPlayer.getAccount('money')
+    local bank = xPlayer.getAccount('bank')
+
+    local moneyamout = money.money
+    local bankamount = bank.money
+
+    return bankamount, moneyamout
+end)
+
+lib.callback.register("EF-Shops:Server:getlicenses", function()
+	local returnLicenses = {}
+	TriggerEvent('esx_license:getLicenses', source, function(licenses)
+		for i = 1, #licenses, 1 do
+			table.insert(returnLicenses, licenses[i].type)
+		end
+	end)
+	for _, license in ipairs(returnLicenses) do
+        print(license)
+    end
+	return returnLicenses
+end)
+
 lib.callback.register("EF-Shops:Server:PurchaseItems", function(source, purchaseData)
-	local player = exports.qbx_core:GetPlayer(source)
+	local player = ESX.GetPlayerFromId(source)
 	local shop = ShopData[purchaseData.shop.id][purchaseData.shop.location]
 
 	if not shop then
@@ -72,9 +94,19 @@ lib.callback.register("EF-Shops:Server:PurchaseItems", function(source, purchase
 		local itemData = ITEMS[shopItem.name]
 
 		if mappedCartItems[shopItem.name] then
-			if shopItem.license and player.PlayerData.metadata.licences[shopItem.license] ~= true then
-				TriggerClientEvent('ox_lib:notify', source, { title = "You do not have the license to purchase this item (" .. shopItem.license .. ").", type = "error" })
-				goto continue
+			if shopItem.license then 
+				TriggerEvent('esx_license:getLicenses', source, function(licenses)
+					local hasRequiredLicense = false 
+					for i = 1, #licenses, 1 do
+						if licenses[i].type == shopItem.license then
+							hasRequiredLicense = true
+						end
+					end
+				end)
+				if hasRequiredLicense ~= true then
+					TriggerClientEvent('ox_lib:notify', source, { title = "You do not have the license to purchase this item (" .. shopItem.license .. ").", type = "error" })
+					goto continue
+				end
 			end
 
 			if not exports.ox_inventory:CanCarryItem(source, shopItem.name, mappedCartItems[shopItem.name].quantity) then
@@ -106,17 +138,21 @@ lib.callback.register("EF-Shops:Server:PurchaseItems", function(source, purchase
 	local purchaseReason = table.concat(itemStrings, "; ")
 
 	if currency == "cash" then
-		if not player.Functions.RemoveMoney("cash", totalPrice, shopData.label .. ": " .. purchaseReason) and totalPrice > 0 then
+		local playerMoney = player.getMoney()
+		if not (playerMoney >= totalPrice and totalPrice > 0) then
 			TriggerClientEvent('ox_lib:notify', source, { title = "You do not have enough cash for this transaction.", type = "error" })
 			return false
 		end
+		player.removeAccountMoney("money", totalPrice)
 	else
-		if not player.Functions.RemoveMoney("bank", totalPrice, shopData.label .. ": " .. purchaseReason) and totalPrice > 0 then
+		local bankMoney = player.getAccount('bank').money
+		if not (bankMoney >= totalPrice and totalPrice > 0) then
 			TriggerClientEvent('ox_lib:notify', source, { title = "You do not have enough money in the bank for this transaction.", type = "error" })
 			return false
 		end
+		player.removeAccountMoney("bank", totalPrice)
 	end
-
+	
 	local dropItems = {}
 	for i = 1, #validCartItems do
 		local item = validCartItems[i]
@@ -139,20 +175,20 @@ lib.callback.register("EF-Shops:Server:PurchaseItems", function(source, purchase
 				shop.inventory[item.inventoryIndex].count = shop.inventory[item.inventoryIndex].count - item.quantity
 			end
 
-			TriggerEventHooks('itemPurchased', {
+			--[[TriggerEventHooks('itemPurchased', {
 				source = source,
 				shopId = purchaseData.shop.id,
 				shopLocation = purchaseData.shop.location,
 				items = response,
 				product = shop.inventory[item.inventoryIndex],
 				currency = currency,
-			})
+			})]]
 		else
 			local itemPrice = item.quantity * shop.inventory[item.inventoryIndex].price
 			if currency == "cash" then
-				player.Functions.AddMoney("cash", itemPrice, "REFUND: " .. shopData.label .. ": " .. purchaseReason)
+				player.addAccountMoney("money", itemPrice)
 			else
-				player.Functions.AddMoney("bank", itemPrice, "REFUND: " .. shopData.label .. ": " .. purchaseReason)
+				player.addAccountMoney("bank", itemPrice)
 			end
 		end
 
