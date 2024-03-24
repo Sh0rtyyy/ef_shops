@@ -13,7 +13,7 @@ A shops system made in React for qbx_core and ox_inventory
 - UI made with Mantine v7
 
 ## Dependencies
-- [qbx-core](https://github.com/Qbox-project/qbx_core)
+- [esx-core](https://github.com/esx-framework/esx_core)
 - [ox_lib](https://github.com/overextended/ox_lib)
 - [ox_inventory](https://github.com/overextended/ox_inventory) 
 
